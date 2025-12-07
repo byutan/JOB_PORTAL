@@ -51,4 +51,23 @@ export const postingService = {
     if (!res.ok) throw new Error(result.error || 'Lỗi khi xóa');
     return result;
   }
+  ,
+  // Lấy 1 posting theo ID
+  getById: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/${id}`);
+    if (!res.ok) throw new Error('Không thể tải posting');
+    return res.json();
+  },
+
+  // Lấy danh sách applies cho posting với search/filter support
+  // params: { search?: string, filter?: 'all' | 'recent' | 'older' }
+  getApplies: async (postId, params = {}) => {
+    const url = new URL(`${API_BASE_URL}/${postId}/applies`);
+    if (params.search) url.searchParams.append('search', params.search);
+    if (params.filter) url.searchParams.append('filter', params.filter);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error('Không thể tải danh sách ứng tuyển');
+    return res.json();
+  }
 };

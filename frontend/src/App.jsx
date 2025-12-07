@@ -4,8 +4,11 @@ import { Plus, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 // --- IMPORT CÁC MODULE BẠN ĐÃ TẠO ---
 // Đảm bảo các file này nằm đúng thư mục như đã cấu trúc
 import { postingService } from './services/postingService';
+import { candidateService } from './services/candidateService';
 import PostingFormModal from './components/PostingFormModal';
 import PostingTable from './components/PostingTable';
+import AppliesModal from './components/AppliesModal';
+import CandidateProfileModal from './components/CandidateProfileModal';
 
 // --- Component Thông báo (Notification) ---
 // (Dùng nội bộ trong App để hiển thị kết quả thao tác)
@@ -33,12 +36,19 @@ const App = () => {
   const [loading, setLoading] = useState(true); // Trạng thái tải trang
   const [isModalOpen, setIsModalOpen] = useState(false); // Trạng thái mở Form Modal
   const [editingItem, setEditingItem] = useState(null); // Item đang được sửa (null = tạo mới)
+  const [appliesModalOpen, setAppliesModalOpen] = useState(false);
+  const [appliesData, setAppliesData] = useState([]);
+  const [currentPostId, setCurrentPostId] = useState(null);
+  const [candidateProfileOpen, setCandidateProfileOpen] = useState(false);
+  const [candidateProfile, setCandidateProfile] = useState(null);
+  const [candidateLoading, setCandidateLoading] = useState(false);
   const [notify, setNotify] = useState({ type: '', message: '' }); // Thông báo Toast
   const [searchTerm, setSearchTerm] = useState(''); // Từ khóa tìm kiếm
 
   // --- 1. LOAD DATA (READ) ---
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -46,7 +56,7 @@ const App = () => {
     try {
       const data = await postingService.getAll();
       setPostings(data);
-    } catch (err) {
+    } catch {
       showNotify('error', 'Không thể kết nối đến Server (Kiểm tra lại Backend)');
     } finally {
       setLoading(false);
@@ -95,6 +105,35 @@ const App = () => {
       loadData(); // Tải lại bảng sau khi xóa
     } catch (err) {
       showNotify('error', err.message);
+    }
+  };
+
+  // --- XEM DANH SÁCH ỨNG TUYỂN CHO 1 POSTING ---
+  const handleViewApplies = async (postId) => {
+    try {
+      setCurrentPostId(postId);
+      const data = await postingService.getApplies(postId);
+      setAppliesData(data);
+      setAppliesModalOpen(true);
+    } catch (err) {
+      showNotify('error', err.message);
+    }
+  };
+
+  // --- XEM PROFILE ỨNG VIÊN ---
+  const handleViewCandidateProfile = async (candidateId) => {
+    try {
+      // close applies modal when opening candidate profile
+      setAppliesModalOpen(false);
+      setCandidateLoading(true);
+      // Optionally pass employerId if logged-in employer; omitted for demo
+      const profile = await candidateService.getProfile(candidateId);
+      setCandidateProfile(profile);
+      setCandidateProfileOpen(true);
+    } catch (err) {
+      showNotify('error', err.message);
+    } finally {
+      setCandidateLoading(false);
     }
   };
 
@@ -162,6 +201,7 @@ const App = () => {
             loading={loading} 
             onEdit={openEditModal} 
             onDelete={handleDelete} 
+            onViewApplies={handleViewApplies}
           />
         </div>
         
@@ -178,6 +218,12 @@ const App = () => {
         onSubmit={handleCreateOrUpdate}
         initialData={editingItem}
       />
+
+      {/* Applies Modal */}
+      <AppliesModal isOpen={appliesModalOpen} onClose={() => setAppliesModalOpen(false)} applies={appliesData} onViewCandidate={handleViewCandidateProfile} postId={currentPostId} />
+
+      {/* Candidate Profile Modal */}
+      <CandidateProfileModal isOpen={candidateProfileOpen} onClose={() => setCandidateProfileOpen(false)} profile={candidateProfile} isLoading={candidateLoading} />
 
       {/* Style Animation cho Notification */}
       <style>{`

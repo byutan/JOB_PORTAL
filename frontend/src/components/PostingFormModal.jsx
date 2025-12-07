@@ -12,24 +12,33 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const defaultState = {
     postName: '', salaryMin: 0, salaryMax: 0, position: '',
     location: '', workForm: 'Full-time', endDate: '',
-    domain: 'IT', postDesc: '', EmployerID: 1, ModStaffID: 1
+    domain: 'IT', postDesc: '', EmployerID: 1, ModStaffID: 7
   };
 
   const [formData, setFormData] = useState(defaultState);
 
   // Load dữ liệu khi mở modal hoặc khi initialData thay đổi
   useEffect(() => {
+    // schedule the state update to avoid synchronous setState inside effect
+    let timer;
     if (isOpen) {
-      if (initialData) {
-        setFormData({
-          ...initialData,
-          // Chuyển đổi ngày từ ISO (Backend) sang YYYY-MM-DD (Input Date)
-          endDate: initialData.endDate ? initialData.endDate.split('T')[0] : ''
-        });
-      } else {
-        setFormData(defaultState);
-      }
+      timer = setTimeout(() => {
+        if (initialData) {
+          setFormData({
+            ...initialData,
+            // Chuyển đổi ngày từ ISO (Backend) sang YYYY-MM-DD (Input Date)
+            endDate: initialData.endDate ? initialData.endDate.split('T')[0] : ''
+          });
+        } else {
+          setFormData(defaultState);
+        }
+      }, 0);
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialData]);
 
   const handleChange = (e) => {
