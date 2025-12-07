@@ -5,6 +5,8 @@ const postingController = require('../controllers/postingController');
 
 
 router.get('/', postingController.getAllPostings);
+router.get('/:id/applies', postingController.getAppliesByPosting);
+router.get('/:id', postingController.getPostingById);
 
 router.post('/', postingController.createPosting);
 
