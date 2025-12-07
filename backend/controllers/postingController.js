@@ -202,6 +202,22 @@ const updatePosting = async (req, res) => {
         if (max < min) {
             return res.status(400).json({ success: false, error: 'salaryMax phải lớn hơn hoặc bằng salaryMin' });
         }
+        // Disallow editing if the posting has already expired
+        const [postingRows] = await pool.execute('SELECT endDate FROM Posting WHERE postID = ?', [id]);
+        if (!postingRows || postingRows.length === 0) {
+            return res.status(404).json({ success: false, error: `Posting ID ${id} not found` });
+        }
+        const dbEnd = postingRows[0].endDate;
+        if (dbEnd) {
+            const end = new Date(dbEnd);
+            // treat endDate as inclusive full day: set to end of day
+            end.setHours(23, 59, 59, 999);
+            const now = new Date();
+            if (now > end) {
+                return res.status(403).json({ success: false, error: 'Tin tuyển dụng đã hết hạn, không thể chỉnh sửa.' });
+            }
+        }
+
         const sql = `CALL sp_UpdatePosting(?, ?, ?, ?, ?)`;
         const values = [id, postDesc, salaryMin, salaryMax, endDate];
 
