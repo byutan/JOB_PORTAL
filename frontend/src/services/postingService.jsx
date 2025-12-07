@@ -51,4 +51,18 @@ export const postingService = {
     if (!res.ok) throw new Error(result.error || 'Lỗi khi xóa');
     return result;
   }
+  ,
+  // Lấy 1 posting theo ID
+  getById: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/${id}`);
+    if (!res.ok) throw new Error('Không thể tải posting');
+    return res.json();
+  },
+
+  // Lấy danh sách applies cho posting
+  getApplies: async (postId) => {
+    const res = await fetch(`${API_BASE_URL}/${postId}/applies`);
+    if (!res.ok) throw new Error('Không thể tải danh sách ứng tuyển');
+    return res.json();
+  }
 };
