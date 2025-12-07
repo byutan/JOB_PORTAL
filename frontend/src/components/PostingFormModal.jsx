@@ -38,6 +38,7 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     return () => {
       if (timer) clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialData]);
 
   const handleChange = (e) => {

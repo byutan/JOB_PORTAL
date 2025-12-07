@@ -38,6 +38,7 @@ const App = () => {
   const [editingItem, setEditingItem] = useState(null); // Item đang được sửa (null = tạo mới)
   const [appliesModalOpen, setAppliesModalOpen] = useState(false);
   const [appliesData, setAppliesData] = useState([]);
+  const [currentPostId, setCurrentPostId] = useState(null);
   const [candidateProfileOpen, setCandidateProfileOpen] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [candidateLoading, setCandidateLoading] = useState(false);
@@ -47,6 +48,7 @@ const App = () => {
   // --- 1. LOAD DATA (READ) ---
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -54,7 +56,7 @@ const App = () => {
     try {
       const data = await postingService.getAll();
       setPostings(data);
-    } catch (err) {
+    } catch {
       showNotify('error', 'Không thể kết nối đến Server (Kiểm tra lại Backend)');
     } finally {
       setLoading(false);
@@ -109,6 +111,7 @@ const App = () => {
   // --- XEM DANH SÁCH ỨNG TUYỂN CHO 1 POSTING ---
   const handleViewApplies = async (postId) => {
     try {
+      setCurrentPostId(postId);
       const data = await postingService.getApplies(postId);
       setAppliesData(data);
       setAppliesModalOpen(true);
@@ -217,7 +220,7 @@ const App = () => {
       />
 
       {/* Applies Modal */}
-      <AppliesModal isOpen={appliesModalOpen} onClose={() => setAppliesModalOpen(false)} applies={appliesData} onViewCandidate={handleViewCandidateProfile} />
+      <AppliesModal isOpen={appliesModalOpen} onClose={() => setAppliesModalOpen(false)} applies={appliesData} onViewCandidate={handleViewCandidateProfile} postId={currentPostId} />
 
       {/* Candidate Profile Modal */}
       <CandidateProfileModal isOpen={candidateProfileOpen} onClose={() => setCandidateProfileOpen(false)} profile={candidateProfile} isLoading={candidateLoading} />

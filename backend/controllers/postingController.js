@@ -35,21 +35,23 @@ const getPostingById = async (req, res) => {
 };
 
 // 1c. Lấy danh sách apply cho 1 posting (GET /:id/applies)
+// Supports query params: ?search=name_or_email&filter=all|recent|older
 const getAppliesByPosting = async (req, res) => {
     const { id } = req.params;
+    const { search = '', filter = 'all' } = req.query;
+
     try {
         const sql = `
-            SELECT a.*, c.*, u.fullName AS fullName, u.emailAddr AS userEmail, cv.*
+            SELECT a.*, c.*, u.fullName AS fullName, u.emailAddr AS userEmail
             FROM Applies a
             LEFT JOIN Candidate c ON a.CandidateID = c.CandidateID
             LEFT JOIN ` + '`User`' + ` u ON c.CandidateID = u.userID
-            LEFT JOIN CV cv ON cv.CandidateID = c.CandidateID
             WHERE a.PostID = ?
         `;
 
         const [rows] = await pool.execute(sql, [id]);
 
-        // Sort results in JS to avoid DB errors if the apply-date column has a different name.
+        // Sort by detected apply-date column (descending) so the latest applies come first
         const dateKeys = ['applyDate', 'ApplyDate', 'apply_on', 'applyOn', 'createdAt', 'createDate', 'appliedAt', 'applyAt'];
         let dateKeyFound = null;
         if (rows && rows.length > 0) {
@@ -60,16 +62,63 @@ const getAppliesByPosting = async (req, res) => {
                 }
             }
         }
-
         if (dateKeyFound) {
-            rows.sort((a, b) => {
-                const da = new Date(a[dateKeyFound]);
-                const db = new Date(b[dateKeyFound]);
-                return db - da;
+            rows.sort((a, b) => new Date(b[dateKeyFound]) - new Date(a[dateKeyFound]));
+        }
+
+        // Deduplicate: keep only the first (latest) apply per candidate/email.
+        const dedupMap = {};
+        const applyIdKeys = ['ApplyID', 'applyID', 'applyId', 'applyid', 'id'];
+        const findApplyId = (r) => {
+            for (const k of applyIdKeys) if (Object.prototype.hasOwnProperty.call(r, k)) return r[k];
+            return undefined;
+        };
+
+        rows.forEach(row => {
+            const idKey = row.CandidateID ? `id:${row.CandidateID}` : null;
+            const emailKey = row.userEmail ? `email:${String(row.userEmail).toLowerCase()}` : null;
+            const applyId = findApplyId(row);
+            const key = idKey || emailKey || (applyId ? `apply:${applyId}` : `row:${Math.random()}`);
+            if (!dedupMap[key]) {
+                dedupMap[key] = row;
+            }
+        });
+        let deduped = Object.values(dedupMap);
+
+        // Server-side search: filter by fullName or emailAddr
+        let filtered = deduped;
+        if (search && search.trim()) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter(a => {
+                const name = (a.fullName || '').toLowerCase();
+                const email = (a.userEmail || '').toLowerCase();
+                return name.includes(searchLower) || email.includes(searchLower);
             });
         }
 
-        res.status(200).json(rows);
+        // Server-side filter: by recency (recent = last 24h, older = older than 24h)
+        if (filter !== 'all') {
+            const now = new Date();
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+            filtered = filtered.filter(a => {
+                const applyDateField = a.applyDate || a.applyOn || a.createdAt || a.createDate;
+                if (!applyDateField) return true;
+
+                const applyDate = new Date(applyDateField);
+                if (filter === 'recent') {
+                    return applyDate >= oneDayAgo;
+                } else if (filter === 'older') {
+                    return applyDate < oneDayAgo;
+                }
+                return true;
+            });
+        }
+
+        // filtered is already in descending apply-date order because rows were
+        // sorted earlier before deduplication. No need to re-detect/sort here.
+
+        res.status(200).json(filtered);
     } catch (error) {
         console.error('Lỗi lấy applies:', error.message);
         res.status(500).json({ message: error.message });

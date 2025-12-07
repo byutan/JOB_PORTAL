@@ -59,9 +59,14 @@ export const postingService = {
     return res.json();
   },
 
-  // Lấy danh sách applies cho posting
-  getApplies: async (postId) => {
-    const res = await fetch(`${API_BASE_URL}/${postId}/applies`);
+  // Lấy danh sách applies cho posting với search/filter support
+  // params: { search?: string, filter?: 'all' | 'recent' | 'older' }
+  getApplies: async (postId, params = {}) => {
+    const url = new URL(`${API_BASE_URL}/${postId}/applies`);
+    if (params.search) url.searchParams.append('search', params.search);
+    if (params.filter) url.searchParams.append('filter', params.filter);
+
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Không thể tải danh sách ứng tuyển');
     return res.json();
   }
