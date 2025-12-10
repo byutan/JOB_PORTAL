@@ -252,11 +252,152 @@ const deletePosting = async (req, res) => {
     }
 };
 
+// 5. Ứng viên ứng tuyển cho tin (POST /:id/apply)
+// Body: { candidateID }
+const createApply = async (req, res) => {
+    const { id } = req.params; // postID
+    const { candidateID } = req.body;
+
+    try {
+        // Validate inputs
+        if (!candidateID) {
+            return res.status(400).json({ success: false, error: 'candidateID là bắt buộc' });
+        }
+
+        // Check if posting exists
+        const [postRows] = await pool.execute('SELECT postID, endDate FROM Posting WHERE postID = ?', [id]);
+        if (!postRows || postRows.length === 0) {
+            return res.status(404).json({ success: false, error: `Posting ID ${id} không tồn tại` });
+        }
+
+        // Check if posting is expired
+        const posting = postRows[0];
+        const endDate = new Date(posting.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        if (new Date() > endDate) {
+            return res.status(403).json({ success: false, error: 'Hạn chót ứng tuyển đã hết' });
+        }
+
+        // Check if candidate exists
+        const [candRows] = await pool.execute('SELECT CandidateID FROM Candidate WHERE CandidateID = ?', [candidateID]);
+        if (!candRows || candRows.length === 0) {
+            return res.status(404).json({ success: false, error: `Candidate ID ${candidateID} không tồn tại` });
+        }
+
+        // Check if already applied
+        const [existApply] = await pool.execute(
+            'SELECT 1 FROM Applies WHERE CandidateID = ? AND postID = ?',
+            [candidateID, id]
+        );
+        if (existApply && existApply.length > 0) {
+            return res.status(409).json({ success: false, error: 'Ứng viên đã ứng tuyển cho vị trí này rồi' });
+        }
+
+        // Insert apply record
+        const now = new Date();
+        const sql = `INSERT INTO Applies (CandidateID, postID, applicationDate, pickCandidate) VALUES (?, ?, ?, 'pending')`;
+        const [result] = await pool.execute(sql, [candidateID, id, now]);
+
+        res.status(201).json({
+            success: true,
+            message: 'Ứng tuyển thành công',
+            data: { applyId: result.insertId, candidateID, postID: id, appliedAt: now }
+        });
+    } catch (error) {
+        console.error('Lỗi tạo apply:', error.message);
+        // Handle trigger violations (e.g. from before_insert_applies trigger)
+        if (error.message && (error.message.includes('Ứng viên đã ứng tuyển') || error.message.includes('Hạn chót'))) {
+            return res.status(400).json({ success: false, error: error.message });
+        }
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// 6. Lấy thống kê kỹ năng cho tin tuyển (GET /:id/skill-analysis)
+// Gọi stored procedure sp_AnalyzeCandidateSkillMatch
+const getSkillAnalysis = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Check if posting exists
+        const [postRows] = await pool.execute('SELECT postID FROM Posting WHERE postID = ?', [id]);
+        if (!postRows || postRows.length === 0) {
+            return res.status(404).json({ success: false, error: `Posting ID ${id} không tồn tại` });
+        }
+
+        // Call stored procedure
+        const sql = `CALL sp_AnalyzeCandidateSkillMatch(?)`;
+        const [result] = await pool.execute(sql, [id]);
+
+        // Extract the result set (usually result[0] or result[0][0] depending on MySQL version)
+        let data = [];
+        if (Array.isArray(result) && result.length > 0) {
+            if (Array.isArray(result[0])) {
+                data = result[0];
+            } else {
+                data = result;
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Phân tích kỹ năng ứng viên',
+            postID: id,
+            candidates: data
+        });
+    } catch (error) {
+        console.error('Lỗi phân tích kỹ năng:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// 7. Lấy danh sách ứng viên (GET /:id/candidates)
+// Gọi stored procedure get_candidates_by_post - trả về danh sách ứng viên sạch cho một posting
+const getCandidatesByPosting = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Check if posting exists
+        const [postRows] = await pool.execute('SELECT postID FROM Posting WHERE postID = ?', [id]);
+        if (!postRows || postRows.length === 0) {
+            return res.status(404).json({ success: false, error: `Posting ID ${id} không tồn tại` });
+        }
+
+        // Call stored procedure to get candidates for this posting
+        const sql = `CALL get_candidates_by_post(?)`;
+        const [result] = await pool.execute(sql, [id]);
+
+        // Extract the result set
+        let candidates = [];
+        if (Array.isArray(result) && result.length > 0) {
+            if (Array.isArray(result[0])) {
+                candidates = result[0];
+            } else {
+                candidates = result;
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Danh sách ứng viên cho vị trí ID ${id}`,
+            postID: id,
+            totalApplicants: candidates.length,
+            candidates
+        });
+    } catch (error) {
+        console.error('Lỗi lấy danh sách ứng viên:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     getAllPostings,
     getPostingById,
     getAppliesByPosting,
     createPosting,
     updatePosting,
-    deletePosting
+    deletePosting,
+    createApply,
+    getSkillAnalysis,
+    getCandidatesByPosting
 };

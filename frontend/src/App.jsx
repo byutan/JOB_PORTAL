@@ -8,7 +8,11 @@ import { candidateService } from './services/candidateService';
 import PostingFormModal from './components/PostingFormModal';
 import PostingTable from './components/PostingTable';
 import AppliesModal from './components/AppliesModal';
+import ApplyModal from './components/ApplyModal';
 import CandidateProfileModal from './components/CandidateProfileModal';
+import CandidatesListModal from './components/CandidatesListModal';
+import SkillMatchingCard from './components/SkillMatchingCard';
+import StatisticsDashboard from './components/StatisticsDashboard';
 
 // --- Component Thông báo (Notification) ---
 // (Dùng nội bộ trong App để hiển thị kết quả thao tác)
@@ -39,11 +43,19 @@ const App = () => {
   const [appliesModalOpen, setAppliesModalOpen] = useState(false);
   const [appliesData, setAppliesData] = useState([]);
   const [currentPostId, setCurrentPostId] = useState(null);
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [selectedPostingForApply, setSelectedPostingForApply] = useState(null);
   const [candidateProfileOpen, setCandidateProfileOpen] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [notify, setNotify] = useState({ type: '', message: '' }); // Thông báo Toast
   const [searchTerm, setSearchTerm] = useState(''); // Từ khóa tìm kiếm
+  // New states for new components
+  const [candidatesListOpen, setCandidatesListOpen] = useState(false);
+  const [selectedPostingForCandidates, setSelectedPostingForCandidates] = useState(null);
+  const [skillMatchingOpen, setSkillMatchingOpen] = useState(false);
+  const [selectedPostingForSkills, setSelectedPostingForSkills] = useState(null);
+  const [statisticsDashboardOpen, setStatisticsDashboardOpen] = useState(false);
 
   // --- 1. LOAD DATA (READ) ---
   useEffect(() => {
@@ -137,6 +149,29 @@ const App = () => {
     }
   };
 
+  // --- OPEN APPLY MODAL ---
+  const handleOpenApplyModal = (posting) => {
+    setSelectedPostingForApply(posting);
+    setApplyModalOpen(true);
+  };
+
+  // --- AFTER APPLY SUCCESS, RELOAD DATA ---
+  const handleApplySuccess = () => {
+    loadData();
+  };
+
+  // --- OPEN CANDIDATES LIST MODAL ---
+  const handleOpenCandidatesListModal = (posting) => {
+    setSelectedPostingForCandidates(posting);
+    setCandidatesListOpen(true);
+  };
+
+  // --- OPEN SKILL MATCHING MODAL ---
+  const handleOpenSkillMatchingModal = (posting) => {
+    setSelectedPostingForSkills(posting);
+    setSkillMatchingOpen(true);
+  };
+
   // --- CÁC HÀM ĐIỀU KHIỂN UI ---
   const openCreateModal = () => {
     setEditingItem(null); // Đặt về null để Form biết là đang Tạo mới
@@ -171,13 +206,22 @@ const App = () => {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Hệ Thống Tuyển Dụng</h1>
             <p className="text-slate-500 mt-1">Quản lý các tin đăng và trạng thái ứng tuyển</p>
           </div>
-          <button 
-            onClick={openCreateModal} 
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-blue-200"
-          >
-            <Plus size={20} className="mr-2" />
-            Đăng Tin Mới
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setStatisticsDashboardOpen(true)} 
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-indigo-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              Thống Kê
+            </button>
+            <button 
+              onClick={openCreateModal} 
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-blue-200"
+            >
+              <Plus size={20} className="mr-2" />
+              Đăng Tin Mới
+            </button>
+          </div>
         </div>
 
         {/* Thanh tìm kiếm */}
@@ -202,6 +246,9 @@ const App = () => {
             onEdit={openEditModal} 
             onDelete={handleDelete} 
             onViewApplies={handleViewApplies}
+            onApply={handleOpenApplyModal}
+            onViewCandidates={handleOpenCandidatesListModal}
+            onViewSkillMatching={handleOpenSkillMatchingModal}
           />
         </div>
         
@@ -222,8 +269,20 @@ const App = () => {
       {/* Applies Modal */}
       <AppliesModal isOpen={appliesModalOpen} onClose={() => setAppliesModalOpen(false)} applies={appliesData} onViewCandidate={handleViewCandidateProfile} postId={currentPostId} />
 
+      {/* Apply Modal (Candidate applying for a job) */}
+      <ApplyModal isOpen={applyModalOpen} onClose={() => setApplyModalOpen(false)} posting={selectedPostingForApply} onSuccess={handleApplySuccess} />
+
       {/* Candidate Profile Modal */}
       <CandidateProfileModal isOpen={candidateProfileOpen} onClose={() => setCandidateProfileOpen(false)} profile={candidateProfile} isLoading={candidateLoading} />
+
+      {/* Candidates List Modal */}
+      <CandidatesListModal isOpen={candidatesListOpen} onClose={() => setCandidatesListOpen(false)} posting={selectedPostingForCandidates} />
+
+      {/* Skill Matching Card Modal */}
+      <SkillMatchingCard isOpen={skillMatchingOpen} onClose={() => setSkillMatchingOpen(false)} posting={selectedPostingForSkills} />
+
+      {/* Statistics Dashboard Modal */}
+      <StatisticsDashboard isOpen={statisticsDashboardOpen} onClose={() => setStatisticsDashboardOpen(false)} postings={postings} />
 
       {/* Style Animation cho Notification */}
       <style>{`
