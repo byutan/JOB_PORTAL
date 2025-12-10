@@ -276,7 +276,7 @@ const App = () => {
       <CandidateProfileModal isOpen={candidateProfileOpen} onClose={() => setCandidateProfileOpen(false)} profile={candidateProfile} isLoading={candidateLoading} />
 
       {/* Candidates List Modal */}
-      <CandidatesListModal isOpen={candidatesListOpen} onClose={() => setCandidatesListOpen(false)} posting={selectedPostingForCandidates} />
+      <CandidatesListModal isOpen={candidatesListOpen} onClose={() => setCandidatesListOpen(false)} posting={selectedPostingForCandidates} onViewProfile={handleViewCandidateProfile} />
 
       {/* Skill Matching Card Modal */}
       <SkillMatchingCard isOpen={skillMatchingOpen} onClose={() => setSkillMatchingOpen(false)} posting={selectedPostingForSkills} />

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Users, Mail, Phone } from 'lucide-react';
 import { postingService } from '../services/postingService';
 
-const CandidatesListModal = ({ isOpen, onClose, posting }) => {
+const CandidatesListModal = ({ isOpen, onClose, posting, onViewProfile }) => {
   const [candidates, setCandidates] = useState([]);
   const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +149,7 @@ const CandidatesListModal = ({ isOpen, onClose, posting }) => {
                 >
                   {/* Candidate Header */}
                   <div className="flex items-start justify-between mb-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-900">
                         {candidate.fullName || 'N/A'}
                       </h3>
@@ -159,13 +159,21 @@ const CandidatesListModal = ({ isOpen, onClose, posting }) => {
                         </p>
                       )}
                     </div>
-                    {candidate.matchPercentage !== undefined && (
-                      <div className="text-right">
-                        <div className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-                          {candidate.matchPercentage}% phù hợp
+                    <div className="flex items-center gap-3">
+                      {candidate.matchPercentage !== undefined && (
+                        <div className="text-right">
+                          <div className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                            {candidate.matchPercentage}% phù hợp
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        onClick={() => onViewProfile && onViewProfile(candidate.CandidateID)}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition whitespace-nowrap"
+                      >
+                        Xem chi tiết
+                      </button>
+                    </div>
                   </div>
 
                   {/* Contact Info Grid */}
