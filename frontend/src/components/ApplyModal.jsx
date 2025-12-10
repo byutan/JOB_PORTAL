@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { postingService } from '../services/postingService';
-import { candidateService } from '../services/candidateService';
 
 /**
  * ApplyModal: Modal cho phép ứng viên submit application cho một job posting
@@ -21,7 +20,6 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
     selfIntro: '',
     totalYearOfExp: 0
   });
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -56,6 +54,14 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
       setError('Mật khẩu phải có 1 chữ số, 1 chữ hoa, 1 ký tự đặc biệt');
       return;
     }
+    if (formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      if (birthDate > today) {
+        setError('Ngày sinh không được trong tương lai');
+        return;
+      }
+    }
 
     setStep(2);
   };
@@ -66,7 +72,7 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
     setSubmitting(true);
 
     try {
-      const response = await postingService.applyAsNewCandidate({
+      await postingService.applyAsNewCandidate({
         ...formData,
         postID: posting.postID,
         totalYearOfExp: parseInt(formData.totalYearOfExp) || 0
@@ -207,6 +213,7 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                       type="date"
                       value={formData.birthDate}
                       onChange={(e) => handleFormChange('birthDate', e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
                     />
                   </div>
@@ -295,7 +302,7 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
           <div className="p-6 border-t border-slate-200 flex gap-3">
             <button
               onClick={handleClose}
-              disabled={submitting || loading}
+              disabled={submitting}
               className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Hủy
