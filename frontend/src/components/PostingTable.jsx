@@ -36,7 +36,11 @@ const PostingTable = ({ data, loading, onEdit, onDelete, onViewApplies, onApply,
           {data.map((post) => {
             const isExpired = new Date(post.endDate) < new Date();
             return (
-              <tr key={post.postID} className="hover:bg-slate-50 transition-colors group">
+              <tr 
+                key={post.postID} 
+                className="hover:bg-blue-50 transition-colors group cursor-pointer"
+                onClick={() => onViewCandidates && onViewCandidates(post)}
+              >
                 <td className="p-4 text-slate-400 font-mono text-sm">#{post.postID}</td>
                 <td className="p-4">
                   <div className="font-semibold text-slate-800">{post.postName}</div>
@@ -56,19 +60,13 @@ const PostingTable = ({ data, loading, onEdit, onDelete, onViewApplies, onApply,
                     {isExpired ? 'Đã hết hạn' : 'Đang tuyển'}
                   </span>
                 </td>
-                <td className="p-4">
+                <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
-                    <button onClick={() => onApply && onApply(post)} className="p-2 rounded-md transition-colors duration-200 text-purple-600 bg-purple-50 hover:bg-purple-100" title="Ứng tuyển">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8m0 8l-4-2m4 2l4-2" /></svg>
+                    <button onClick={() => onApply && onApply(post)} className="px-3 py-1.5 rounded-md transition-colors duration-200 text-purple-600 bg-purple-50 hover:bg-purple-100 text-sm font-medium" title="Ứng tuyển">
+                      Ứng tuyển
                     </button>
                     <button onClick={() => onEdit(post)} className="p-2 rounded-md transition-colors duration-200 text-blue-600 bg-blue-50 hover:bg-blue-100" title="Sửa">
                       <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => onViewCandidates && onViewCandidates(post)} className="p-2 rounded-md transition-colors duration-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" title="Danh sách ứng viên">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                    </button>
-                    <button onClick={() => onViewSkillMatching && onViewSkillMatching(post)} className="p-2 rounded-md transition-colors duration-200 text-orange-600 bg-orange-50 hover:bg-orange-100" title="Phân tích kỹ năng">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </button>
                     <button onClick={() => onDelete(post.postID)} className="p-2 rounded-md transition-colors duration-200 text-red-600 bg-red-50 hover:bg-red-100" title="Xóa">
                       <Trash2 size={16} />

@@ -136,7 +136,12 @@ const createCandidate = async (req, res) => {
 
 // Apply directly: create user + candidate + apply in one step
 const applyAsNewCandidate = async (req, res) => {
-  const { fullName, emailAddr, phoneNumber, password, sex, birthDate, address, currentTitle, selfIntro, totalYearOfExp, postID } = req.body;
+  const { 
+    fullName, emailAddr, phoneNumber, password, sex, birthDate, address, 
+    currentTitle, selfIntro, totalYearOfExp, postID,
+    experiences = [], skills = [], cvs = [], foreignLanguages = [], 
+    certificates = [], education = []
+  } = req.body;
 
   try {
     // Validate required fields
@@ -180,16 +185,103 @@ const applyAsNewCandidate = async (req, res) => {
     const [userResult] = await pool.execute(userSql, [fullName, emailAddr, phoneNumber, password, sex || 'Nam', birthDate, address]);
     const newUserID = userResult.insertId;
 
-    // 2. Create Candidate
+    // 2. Create Candidate - Calculate totalYearOfExp from experiences array
+    let calculatedTotalYearOfExp = 0;
+    if (Array.isArray(experiences) && experiences.length > 0) {
+      for (const exp of experiences) {
+        if (exp.startDate && exp.endDate) {
+          const start = new Date(exp.startDate);
+          const end = new Date(exp.endDate);
+          const years = (end - start) / (1000 * 60 * 60 * 24 * 365.25);
+          calculatedTotalYearOfExp += years;
+        }
+      }
+    }
+    // Use calculated value, or fallback to provided value, or default to 0
+    const finalTotalYearOfExp = calculatedTotalYearOfExp > 0 ? Math.round(calculatedTotalYearOfExp * 10) / 10 : (totalYearOfExp || 0);
+    
     const candidateSql = `INSERT INTO Candidate (CandidateID, currentTitle, selfIntro, totalYearOfExp) 
                          VALUES (?, ?, ?, ?)`;
-    await pool.execute(candidateSql, [newUserID, currentTitle || '', selfIntro || '', totalYearOfExp || 0]);
+    await pool.execute(candidateSql, [newUserID, currentTitle || '', selfIntro || '', finalTotalYearOfExp]);
 
     // 3. Create Apply
     const now = new Date();
     const applySql = `INSERT INTO Applies (CandidateID, postID, applicationDate, pickCandidate) 
                       VALUES (?, ?, ?, 'pending')`;
     const [applyResult] = await pool.execute(applySql, [newUserID, postID, now]);
+
+    // 4. Insert Experience Records
+    if (Array.isArray(experiences) && experiences.length > 0) {
+      for (let i = 0; i < experiences.length; i++) {
+        const exp = experiences[i];
+        if (exp.jobTitle && exp.companyName) {
+          const expSql = `INSERT INTO Experience (CandidateID, expID, jobTitle, CompanyName, startDate, endDate, expDesc, Candidate_ID) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+          await pool.execute(expSql, [newUserID, i + 1, exp.jobTitle, exp.companyName, exp.startDate || null, exp.endDate || null, exp.description || '', newUserID]);
+        }
+      }
+    }
+
+    // 5. Insert Education Records
+    if (Array.isArray(education) && education.length > 0) {
+      for (let i = 0; i < education.length; i++) {
+        const edu = education[i];
+        if (edu.schoolName) {
+          const eduSql = `INSERT INTO Education (CandidateID, eduID, schoolName, major, degree, startDate, endDate, Candidate_ID) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+          await pool.execute(eduSql, [newUserID, i + 1, edu.schoolName, edu.major || '', edu.degree || '', edu.startDate || null, edu.endDate || null, newUserID]);
+        }
+      }
+    }
+
+    // 6. Insert Foreign Language Records
+    if (Array.isArray(foreignLanguages) && foreignLanguages.length > 0) {
+      for (let i = 0; i < foreignLanguages.length; i++) {
+        const lang = foreignLanguages[i];
+        if (lang.language) {
+          const langSql = `INSERT INTO ForeignLanguage (CandidateID, langID, language, level, Candidate_ID) 
+                          VALUES (?, ?, ?, ?, ?)`;
+          await pool.execute(langSql, [newUserID, i + 1, lang.language, lang.level || 'Sơ cấp', newUserID]);
+        }
+      }
+    }
+
+    // 7. Insert Certificate Records
+    if (Array.isArray(certificates) && certificates.length > 0) {
+      for (let i = 0; i < certificates.length; i++) {
+        const cert = certificates[i];
+        if (cert.certName) {
+          const certSql = `INSERT INTO Certificate (CandidateID, certID, certName, organization, issueDate, certURL, Candidate_ID) 
+                          VALUES (?, ?, ?, ?, ?, ?, ?)`;
+          await pool.execute(certSql, [newUserID, i + 1, cert.certName, cert.organization || '', cert.issueDate || null, cert.certURL || '', newUserID]);
+        }
+      }
+    }
+
+    // 8. Insert CV Records
+    if (Array.isArray(cvs) && cvs.length > 0) {
+      for (let i = 0; i < cvs.length; i++) {
+        const cv = cvs[i];
+        if (cv.cvName) {
+          const cvSql = `INSERT INTO CV (CandidateID, cvID, cvName, cvURL, Candidate_ID) 
+                        VALUES (?, ?, ?, ?, ?)`;
+          await pool.execute(cvSql, [newUserID, i + 1, cv.cvName, cv.cvURL || '', newUserID]);
+        }
+      }
+    }
+
+    // 9. Insert Skills
+    if (Array.isArray(skills) && skills.length > 0) {
+      for (const skill of skills) {
+        // Handle both skill objects and raw IDs
+        const skillId = typeof skill === 'object' ? skill.SkillID : skill;
+        if (skillId) {
+          await pool.execute('INSERT INTO Has (CandidateID, skillID) VALUES (?, ?)', [newUserID, skillId]).catch(() => {
+            // Ignore duplicate errors
+          });
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,

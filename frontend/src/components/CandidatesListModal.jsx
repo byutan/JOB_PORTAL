@@ -1,60 +1,150 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Users, Mail, Phone } from 'lucide-react';
+import { X, Search, Users, Mail, Phone, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 import { postingService } from '../services/postingService';
 
-const CandidatesListModal = ({ isOpen, onClose, posting, onViewProfile }) => {
+const CandidatesListModal = ({ isOpen, onClose, posting, onViewProfile, refreshKey }) => {
   const [candidates, setCandidates] = useState([]);
   const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
+  const [stats, setStats] = useState({
+    totalCandidates: 0,
+    avgMatchPercentage: 0,
+    topSkills: {},
+  });
 
   useEffect(() => {
     if (isOpen && posting) {
       loadCandidates();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, posting?.postID]);
+  }, [isOpen, posting?.postID, refreshKey]);
 
   const loadCandidates = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await postingService.getCandidatesByPosting(posting.postID);
-      console.log('Candidates Response:', data);
-      // Dữ liệu từ get_candidates_by_post procedure
-      const raw = data.candidates || data.data || data || [];
-      const list = (Array.isArray(raw) ? raw : []).map((c, i) => {
-        // normalize skills: may be a comma-separated string
-        let skills = c.skills ?? c.skillList ?? c.skilllist ?? '';
-        if (typeof skills === 'string') {
-          skills = skills.split(',').map(s => s.trim()).filter(Boolean);
-        } else if (!Array.isArray(skills)) {
-          skills = [];
-        }
+      // Lấy dữ liệu từ 2 API: skill analysis (để match score) và applies (để lấy thông tin ứng viên đầy đủ)
+      const [skillData, appliesData] = await Promise.all([
+        postingService.getSkillAnalysis(posting.postID).catch(() => ({ candidates: [] })),
+        postingService.getApplies(posting.postID).catch(() => [])
+      ]);
+      
+      console.log('Skill Analysis Response:', skillData);
+      console.log('Applies Response:', appliesData);
+      
+      // Tạo map skill analysis bằng CandidateID hoặc email để nhanh chóng lookup
+      const skillMap = {};
+      const raw = skillData.candidates || skillData.data || [];
+      
+      if (raw.length > 0) {
+        console.log('First skill analysis keys:', Object.keys(raw[0]));
+        raw.forEach(c => {
+          // Thử tìm CandidateID từ các trường khác nếu không có
+          const candId = c.CandidateID ?? c.candidateID;
+          const email = c.ContactEmail ?? c.emailAddr ?? c.email ?? '';
+          const name = c.CandidateName ?? c.fullName ?? '';
+          
+          if (candId) {
+            skillMap[candId] = c;
+          }
+          if (email) {
+            skillMap[`email:${email.toLowerCase()}`] = c;
+          }
+          if (name && email) {
+            skillMap[`name_email:${name}:${email}`] = c;
+          }
+        });
+      }
 
+      // Dữ liệu từ applies - đây là dữ liệu chính và đáng tin cậy hơn
+      const appliesList = Array.isArray(appliesData) ? appliesData : [];
+      console.log('Raw applies data:', appliesList);
+      
+      const list = appliesList.map((apply, i) => {
+        // Lấy thông tin cơ bản từ applies (từ Candidate + User table)
+        const candId = apply.CandidateID ?? apply.candidateID;
+        const fullName = apply.fullName ?? apply.CandidateName ?? apply.candidateName ?? '';
+        const emailAddr = apply.userEmail ?? apply.emailAddr ?? apply.email ?? apply.ContactEmail ?? '';
+        const phoneNumber = apply.phoneNumber ?? apply.phone ?? '';
+        const currentTitle = apply.currentTitle ?? apply.CurrentJobTitle ?? '';
+        
+        // Tìm skill analysis data để lấy match percentage
+        let skillInfo = skillMap[candId] || skillMap[`email:${emailAddr.toLowerCase()}`] || {};
+        
         return {
-          CandidateID: c.CandidateID ?? c.candidateID ?? `c_${i}`,
-          fullName: c.fullName ?? c.fullName ?? c.CandidateName ?? '',
-          emailAddr: c.emailAddr ?? c.email ?? '',
-          phoneNumber: c.phoneNumber ?? c.phone ?? '',
-          currentTitle: c.currentTitle ?? c.CurrentJobTitle ?? '',
-          totalYearOfExp: c.totalYearOfExp ?? c.totalYearOfExp ?? null,
-          skills,
-          selfIntro: c.selfIntro ?? c.intro ?? '',
-          pickCandidate: c.pickCandidate ?? null,
-          raw: c
+          CandidateID: candId ?? `c_${i}`,
+          fullName: fullName || 'N/A',
+          emailAddr: emailAddr || 'N/A',
+          phoneNumber: phoneNumber || 'N/A',
+          currentTitle: currentTitle || 'N/A',
+          totalYearOfExp: apply.totalYearOfExp ?? apply.YearsOfExperience ?? null,
+          skills: [],
+          selfIntro: apply.selfIntro ?? '',
+          pickCandidate: apply.pickCandidate ?? null,
+          // Từ skill analysis
+          matchedSkillCount: skillInfo.MatchedSkillCount ?? 0,
+          totalRequiredSkills: skillInfo.TotalRequiredSkills ?? 0,
+          matchPercentage: skillInfo.MatchPercentage ?? 0,
+          raw: { apply, skillInfo }
         };
       });
 
+      console.log('Processed candidates:', list);
       setCandidates(list);
       setFilteredCandidates(list);
+      
+      // Calculate statistics
+      calculateStats(list);
     } catch (err) {
       setError(err.message);
       console.error('Candidates Error:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateStats = (candidatesList) => {
+    if (candidatesList.length === 0) {
+      setStats({ totalCandidates: 0, avgMatchPercentage: 0, topSkills: {} });
+      return;
+    }
+
+    // Calculate average match percentage từ dữ liệu procedure
+    const validMatches = candidatesList.filter(c => c.matchPercentage > 0 || c.matchedSkillCount > 0);
+    const avgMatch = validMatches.length > 0 
+      ? validMatches.reduce((sum, c) => sum + (c.matchPercentage || 0), 0) / validMatches.length
+      : 0;
+
+    // Tạo top skills dựa trên MatchedSkillCount của các ứng viên
+    // Cách tính: giả sử mỗi ứng viên matched những kỹ năng nhất định
+    const skillFreq = {};
+    candidatesList.forEach((candidate) => {
+      if (candidate.matchedSkillCount > 0) {
+        // Vì procedure không trả về chi tiết từng skill của mỗi candidate
+        // Nên tính skill demand dựa trên số lượng ứng viên match với từng tỉ lệ
+        const key = `Skill_${candidate.matchedSkillCount}_of_${candidate.totalRequiredSkills}`;
+        skillFreq[key] = (skillFreq[key] || 0) + 1;
+      }
+    });
+
+    // Chỉ lấy top skills nếu có
+    const topSkills = Object.entries(skillFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .reduce((obj, [skill, count]) => {
+        // Format lại tên skill cho dễ đọc
+        const displayName = skill.replace('Skill_', '').replace(/_/g, ' ');
+        obj[displayName] = count;
+        return obj;
+      }, {});
+
+    setStats({
+      totalCandidates: candidatesList.length,
+      avgMatchPercentage: Math.round(avgMatch * 100) / 100,
+      topSkills,
+    });
   };
 
   const handleSearch = (term) => {
@@ -111,6 +201,60 @@ const CandidatesListModal = ({ isOpen, onClose, posting, onViewProfile }) => {
             />
           </div>
         </div>
+
+        {/* Statistics Section */}
+        {!loading && filteredCandidates.length > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <BarChart3 size={20} className="text-blue-600" />
+              <h3 className="font-bold text-gray-900">Thống Kê Ứng Viên</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Total Candidates */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">Tổng Ứng Viên</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">
+                      {stats.totalCandidates}
+                    </p>
+                  </div>
+                  <Users size={28} className="text-blue-400 opacity-70" />
+                </div>
+              </div>
+
+              {/* Top Skills Count */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">Kỹ Năng Nổi Bật</p>
+                    <p className="text-2xl font-bold text-purple-600 mt-1">
+                      {Object.keys(stats.topSkills).length}
+                    </p>
+                  </div>
+                  <Activity size={28} className="text-purple-400 opacity-70" />
+                </div>
+              </div>
+            </div>
+
+            {/* Top Skills */}
+            {Object.keys(stats.topSkills).length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Kỹ Năng Nổi Bật:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(stats.topSkills).map(([skill, count]) => (
+                    <span
+                      key={skill}
+                      className="inline-block bg-white text-blue-700 px-3 py-1 rounded-full text-xs border border-blue-300 font-medium"
+                    >
+                      {skill} <span className="ml-1 text-blue-500">({count})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-6">
@@ -192,6 +336,18 @@ const CandidatesListModal = ({ isOpen, onClose, posting, onViewProfile }) => {
                   {candidate.totalYearOfExp !== undefined && (
                     <div className="text-sm text-gray-700 mb-3">
                       <span className="font-semibold">Kinh nghiệm:</span> {candidate.totalYearOfExp} năm
+                    </div>
+                  )}
+
+                  {/* Skill Match Info from Procedure */}
+                  {candidate.matchedSkillCount !== undefined && candidate.totalRequiredSkills !== undefined && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-semibold text-blue-900">
+                        Kỹ Năng Phù Hợp: <span className="text-lg text-blue-700">{candidate.matchedSkillCount}/{candidate.totalRequiredSkills}</span>
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Độ khớp: <span className="font-bold text-blue-900">{candidate.matchPercentage}%</span>
+                      </p>
                     </div>
                   )}
 

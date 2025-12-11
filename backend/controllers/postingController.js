@@ -42,11 +42,11 @@ const getAppliesByPosting = async (req, res) => {
 
     try {
         const sql = `
-            SELECT a.*, c.*, u.fullName AS fullName, u.emailAddr AS userEmail
+            SELECT a.*, c.*, u.fullName AS fullName, u.emailAddr AS userEmail, u.phoneNumber
             FROM Applies a
             LEFT JOIN Candidate c ON a.CandidateID = c.CandidateID
             LEFT JOIN ` + '`User`' + ` u ON c.CandidateID = u.userID
-            WHERE a.PostID = ?
+            WHERE a.PostID = ? AND u.userID IS NOT NULL
         `;
 
         const [rows] = await pool.execute(sql, [id]);
@@ -130,7 +130,7 @@ const createPosting = async (req, res) => {
     const { 
         postName, salaryMin, salaryMax, position, 
         location, workForm, endDate, domain, postDesc, 
-        EmployerID, ModStaffID 
+        EmployerID, ModStaffID, requiredSkills = []
     } = req.body;
 
     try {
@@ -167,9 +167,32 @@ const createPosting = async (req, res) => {
 
         const [result] = await pool.execute(sql, values);
         
+        let postId = null;
+        if (result && result[0] && result[0][0]) {
+            // Extract postID from procedure result if available
+            postId = result[0][0].postID || result[0][0].Post_ID;
+        }
+
+        // Insert required skills if provided
+        if (postId && Array.isArray(requiredSkills) && requiredSkills.length > 0) {
+            const skillIds = requiredSkills.map(skill => 
+              typeof skill === 'object' ? skill.SkillID : skill
+            ).filter(id => id);
+            
+            if (skillIds.length > 0) {
+                const insertSkillSql = `INSERT INTO \`Require\` (skillID, postID) VALUES ${skillIds.map(() => '(?, ?)').join(', ')}`;
+                const insertValues = [];
+                skillIds.forEach(id => {
+                    insertValues.push(id, postId);
+                });
+                await pool.execute(insertSkillSql, insertValues);
+            }
+        }
+        
         res.status(201).json({ 
             success: true, 
-            message: result[0][0].Message 
+            message: result[0][0].Message,
+            postId: postId
         });
     } catch (error) {
         console.error("Lỗi tạo tin:", error.message);
@@ -337,6 +360,56 @@ const getSkillAnalysis = async (req, res) => {
             } else {
                 data = result;
             }
+        }
+
+        // Enrich with CandidateID from User table if not present in procedure result
+        if (data.length > 0 && !data[0].CandidateID) {
+            const enrichedData = await Promise.all(
+                data.map(async (candidate) => {
+                    const email = candidate.ContactEmail || candidate.emailAddr;
+                    if (email && candidate.CandidateName) {
+                        try {
+                            // Try 1: Find by exact email (case-insensitive)
+                            let [userRows] = await pool.execute(
+                                'SELECT userID FROM `User` WHERE LOWER(emailAddr) = LOWER(?) LIMIT 1',
+                                [email.trim()]
+                            );
+                            
+                            // Try 2: Find by full name if email doesn't match
+                            if (!userRows || userRows.length === 0) {
+                                [userRows] = await pool.execute(
+                                    'SELECT userID FROM `User` WHERE LOWER(fullName) = LOWER(?) LIMIT 1',
+                                    [candidate.CandidateName.trim()]
+                                );
+                            }
+                            
+                            // Try 3: Query Candidate + User through Applies
+                            if (!userRows || userRows.length === 0) {
+                                [userRows] = await pool.execute(
+                                    `SELECT DISTINCT c.CandidateID as userID 
+                                     FROM Candidate c 
+                                     JOIN \`User\` u ON c.CandidateID = u.userID 
+                                     WHERE LOWER(u.emailAddr) = LOWER(?) 
+                                     LIMIT 1`,
+                                    [email.trim()]
+                                );
+                            }
+                            
+                            if (userRows && userRows.length > 0) {
+                                return {
+                                    ...candidate,
+                                    CandidateID: userRows[0].userID
+                                };
+                            }
+                        } catch (err) {
+                            // Silently continue if enrichment fails
+                        }
+                    }
+                    return candidate;
+                })
+            );
+            
+            data = enrichedData;
         }
 
         res.status(200).json({

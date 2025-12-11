@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const pool = require('./config/db');
 const postingRoutes = require('./routes/postingRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
+const skillRoutes = require('./routes/skillRoutes');
 dotenv.config();
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 
 app.use('/api/postings', postingRoutes);
 app.use('/api/candidates', candidateRoutes);
+app.use('/api/skills', skillRoutes);
 
 app.get('/', (req, res) => {
     res.send('Job Portal API is running...');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 
 /**
  * COMPONENT: Form Modal
@@ -12,14 +12,36 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const defaultState = {
     postName: '', salaryMin: 0, salaryMax: 0, position: '',
     location: '', workForm: 'Full-time', endDate: '',
-    domain: 'IT', postDesc: '', EmployerID: 1, ModStaffID: 7
+    domain: 'IT', postDesc: '', EmployerID: 19, ModStaffID: 17,
+    requiredSkills: []
   };
 
   const [formData, setFormData] = useState(defaultState);
+  const [allSkills, setAllSkills] = useState([]);
+  const [selectedSkillId, setSelectedSkillId] = useState('');
 
   // Load dữ liệu khi mở modal hoặc khi initialData thay đổi
   useEffect(() => {
-    // schedule the state update to avoid synchronous setState inside effect
+    // Fetch all available skills
+    const fetchSkills = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/skills');
+        if (res.ok) {
+          const data = await res.json();
+          setAllSkills(Array.isArray(data) ? data : data.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching skills:', err);
+      }
+    };
+
+    if (isOpen) {
+      fetchSkills();
+    }
+  }, [isOpen]);
+
+  // schedule the state update to avoid synchronous setState inside effect
+  useEffect(() => {
     let timer;
     if (isOpen) {
       timer = setTimeout(() => {
@@ -27,7 +49,8 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
           setFormData({
             ...initialData,
             // Chuyển đổi ngày từ ISO (Backend) sang YYYY-MM-DD (Input Date)
-            endDate: initialData.endDate ? initialData.endDate.split('T')[0] : ''
+            endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
+            requiredSkills: initialData.requiredSkills || []
           });
         } else {
           setFormData(defaultState);
@@ -44,6 +67,31 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddSkill = () => {
+    if (!selectedSkillId) return;
+    
+    const skill = allSkills.find(s => s.SkillID === parseInt(selectedSkillId));
+    if (!skill) return;
+    
+    // Check if skill already added
+    if (formData.requiredSkills.some(s => s.SkillID === skill.SkillID)) {
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      requiredSkills: [...prev.requiredSkills, skill]
+    }));
+    setSelectedSkillId('');
+  };
+
+  const handleRemoveSkill = (skillId) => {
+    setFormData(prev => ({
+      ...prev,
+      requiredSkills: prev.requiredSkills.filter(s => s.SkillID !== skillId)
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -184,6 +232,52 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 value={formData.postDesc} onChange={handleChange}
                 placeholder="Mô tả chi tiết về yêu cầu công việc..."
               ></textarea>
+            </div>
+
+            {/* Kỹ năng yêu cầu */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="label-text block text-sm font-semibold text-slate-700 mb-1.5">Kỹ Năng Yêu Cầu</label>
+              <div className="flex gap-2 mb-3">
+                <select 
+                  value={selectedSkillId} 
+                  onChange={(e) => setSelectedSkillId(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
+                >
+                  <option value="">-- Chọn kỹ năng --</option>
+                  {allSkills.map(skill => (
+                    <option key={skill.SkillID} value={skill.SkillID}>
+                      {skill.skillName} ({skill.skillCategory})
+                    </option>
+                  ))}
+                </select>
+                <button 
+                  type="button"
+                  onClick={handleAddSkill}
+                  disabled={!selectedSkillId}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Plus size={18} /> Thêm
+                </button>
+              </div>
+              
+              {/* Selected Skills Tags */}
+              <div className="flex flex-wrap gap-2">
+                {formData.requiredSkills.map(skill => (
+                  <div 
+                    key={skill.SkillID}
+                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"
+                  >
+                    <span>{skill.skillName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(skill.SkillID)}
+                      className="text-blue-500 hover:text-blue-800 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
