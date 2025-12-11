@@ -46,11 +46,21 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (isOpen) {
       timer = setTimeout(() => {
         if (initialData) {
+          // Parse requiredSkills if it's a string (from API)
+          let requiredSkillsArray = initialData.requiredSkills || [];
+          if (typeof initialData.requiredSkills === 'string' && initialData.requiredSkills.length > 0) {
+            const skillNames = initialData.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+            // Match skill names with allSkills to get SkillID
+            requiredSkillsArray = skillNames
+              .map(name => allSkills.find(skill => skill.skillName === name || skill.SkillName === name))
+              .filter(skill => skill !== undefined);
+          }
+
           setFormData({
             ...initialData,
             // Chuyển đổi ngày từ ISO (Backend) sang YYYY-MM-DD (Input Date)
             endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
-            requiredSkills: initialData.requiredSkills || []
+            requiredSkills: requiredSkillsArray
           });
         } else {
           setFormData(defaultState);
@@ -62,7 +72,7 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, allSkills]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -123,24 +133,36 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             {/* Cột Trái */}
             <div className="space-y-4">
               <div>
-                <label className="label-text block text-sm font-semibold text-slate-700 mb-1.5">Tiêu đề bài đăng</label>
+                <label className="label-text flex justify-between text-sm font-semibold text-slate-700 mb-1.5">
+                  <span>Tiêu đề bài đăng</span>
+                  <span className={`text-xs ${formData.postName.length > 255 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                    {formData.postName.length}/255 ký tự
+                  </span>
+                </label>
                 <input 
-                  type="text" name="postName" required
+                  type="text" name="postName" required maxLength="255"
                   disabled={isEditMode}
                   className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   value={formData.postName} onChange={handleChange}
                   placeholder="VD: Senior React Developer"
                 />
-                {isEditMode && <span className="text-xs text-amber-600 mt-1 block">⚠️ Không thể sửa tiêu đề (Ràng buộc DB)</span>}
+                {isEditMode && <span className="text-xs text-amber-600 mt-1 block">
+                   Không thể sửa tiêu đề (Ràng buộc DB)</span>}
               </div>
 
               <div>
-                <label className="label-text block text-sm font-semibold text-slate-700 mb-1.5">Vị trí (Position)</label>
+                <label className="label-text flex justify-between text-sm font-semibold text-slate-700 mb-1.5">
+                  <span>Vị trí (Position)</span>
+                  <span className={`text-xs ${formData.position.length > 255 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                    {formData.position.length}/255 ký tự
+                  </span>
+                </label>
                 <input 
-                  type="text" name="position" required
+                  type="text" name="position" required maxLength="255"
                   disabled={isEditMode}
                   className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm ${isEditMode ? 'bg-gray-100' : ''}`}
                   value={formData.position} onChange={handleChange}
+                  placeholder="VD: Senior Developer"
                 />
               </div>
 
@@ -188,11 +210,17 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </div>
 
               <div>
-                <label className="label-text block text-sm font-semibold text-slate-700 mb-1.5">Địa điểm làm việc</label>
+                <label className="label-text flex justify-between text-sm font-semibold text-slate-700 mb-1.5">
+                  <span>Địa điểm làm việc</span>
+                  <span className={`text-xs ${formData.location.length > 255 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                    {formData.location.length}/255 ký tự
+                  </span>
+                </label>
                 <input 
-                  type="text" name="location" disabled={isEditMode}
+                  type="text" name="location" disabled={isEditMode} maxLength="255"
                   className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm ${isEditMode ? 'bg-gray-100' : ''}`}
                   value={formData.location} onChange={handleChange}
+                  placeholder="VD: Hà Nội, TP.HCM"
                 />
               </div>
             </div>
@@ -201,7 +229,7 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             <div className="col-span-1 md:col-span-2">
               <label className="label-text mb-2 block text-sm font-semibold text-slate-700">Hình thức làm việc</label>
               <div className="flex gap-6">
-                {['Full-time', 'Part-time', 'Remote', 'Hybrid'].map(type => (
+                {['Full-time', 'Part-time', 'others'].map(type => (
                   <label key={type} className="flex items-center cursor-pointer group">
                     <div className="relative flex items-center">
                       <input 
@@ -212,7 +240,7 @@ const PostingFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       />
                       <span className="absolute bg-blue-600 w-2 h-2 rounded-full opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all"></span>
                     </div>
-                    <span className="ml-2 text-slate-700 group-hover:text-blue-600 text-sm">{type}</span>
+                    <span className="ml-2 text-slate-700 group-hover:text-blue-600 text-sm">{type === 'others' ? 'Khác' : type}</span>
                   </label>
                 ))}
               </div>

@@ -339,8 +339,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Họ và Tên <span className="text-red-500">*</span></label>
+                    <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                      <span></span>
+                      <span>{formData.fullName.length}/255</span>
+                    </div>
                     <input
                       type="text"
+                      maxLength="255"
                       value={formData.fullName}
                       onChange={(e) => handleFormChange('fullName', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
@@ -348,8 +353,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
+                    <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                      <span></span>
+                      <span>{formData.emailAddr.length}/255</span>
+                    </div>
                     <input
                       type="email"
+                      maxLength="255"
                       value={formData.emailAddr}
                       onChange={(e) => handleFormChange('emailAddr', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
@@ -357,8 +367,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Số Điện Thoại <span className="text-red-500">*</span></label>
+                    <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                      <span></span>
+                      <span>{formData.phoneNumber.length}/25</span>
+                    </div>
                     <input
                       type="tel"
+                      maxLength="25"
                       value={formData.phoneNumber}
                       onChange={(e) => handleFormChange('phoneNumber', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
@@ -366,8 +381,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Mật Khẩu <span className="text-red-500">*</span></label>
+                    <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                      <span></span>
+                      <span>{formData.password.length}/255</span>
+                    </div>
                     <input
                       type="password"
+                      maxLength="255"
                       value={formData.password}
                       onChange={(e) => handleFormChange('password', e.target.value)}
                       placeholder="Min 8 chars, 1 digit, 1 uppercase, 1 special"
@@ -401,20 +421,30 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Địa Chỉ</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => handleFormChange('address', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Địa Chỉ</label>
+                    <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                      <span></span>
+                      <span>{formData.address.length}/255</span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength="255"
+                      value={formData.address}
+                      onChange={(e) => handleFormChange('address', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
+                    />
+                  </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Vị Trí Hiện Tại</label>
+                  <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                    <span></span>
+                    <span>{formData.currentTitle.length}/255</span>
+                  </div>
                   <input
                     type="text"
+                    maxLength="255"
                     value={formData.currentTitle}
                     onChange={(e) => handleFormChange('currentTitle', e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm"
@@ -423,7 +453,12 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Giới Thiệu Bản Thân</label>
+                  <div className="flex justify-between items-center text-xs text-gray-400 mb-1">
+                    <span></span>
+                    <span>{formData.selfIntro.length}/2500</span>
+                  </div>
                   <textarea
+                    maxLength="2500"
                     value={formData.selfIntro}
                     onChange={(e) => handleFormChange('selfIntro', e.target.value)}
                     rows="3"
@@ -455,8 +490,20 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 {formData.experiences.map((exp, idx) => (
                   <div key={idx} className="bg-slate-50 p-3 rounded-lg mb-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                      <input type="text" placeholder="Chức vụ" value={exp.jobTitle} onChange={(e) => updateExperience(idx, 'jobTitle', e.target.value)} className="text-sm p-2 border rounded" />
-                      <input type="text" placeholder="Công ty" value={exp.companyName} onChange={(e) => updateExperience(idx, 'companyName', e.target.value)} className="text-sm p-2 border rounded" />
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{exp.jobTitle.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Chức vụ" value={exp.jobTitle} onChange={(e) => updateExperience(idx, 'jobTitle', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{exp.companyName.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Công ty" value={exp.companyName} onChange={(e) => updateExperience(idx, 'companyName', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
                       <input type="date" value={exp.startDate} onChange={(e) => updateExperience(idx, 'startDate', e.target.value)} className="text-sm p-2 border rounded" />
                       <input type="date" value={exp.endDate} onChange={(e) => updateExperience(idx, 'endDate', e.target.value)} className="text-sm p-2 border rounded" />
                     </div>
@@ -479,9 +526,27 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 {formData.education.map((edu, idx) => (
                   <div key={idx} className="bg-slate-50 p-3 rounded-lg mb-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                      <input type="text" placeholder="Trường" value={edu.schoolName} onChange={(e) => updateEducation(idx, 'schoolName', e.target.value)} className="text-sm p-2 border rounded" />
-                      <input type="text" placeholder="Chuyên ngành" value={edu.major} onChange={(e) => updateEducation(idx, 'major', e.target.value)} className="text-sm p-2 border rounded" />
-                      <input type="text" placeholder="Bằng cấp" value={edu.degree} onChange={(e) => updateEducation(idx, 'degree', e.target.value)} className="text-sm p-2 border rounded" />
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{edu.schoolName.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Trường" value={edu.schoolName} onChange={(e) => updateEducation(idx, 'schoolName', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{edu.major.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Chuyên ngành" value={edu.major} onChange={(e) => updateEducation(idx, 'major', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{edu.degree.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Bằng cấp" value={edu.degree} onChange={(e) => updateEducation(idx, 'degree', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
                       <input type="date" value={edu.startDate} onChange={(e) => updateEducation(idx, 'startDate', e.target.value)} className="text-sm p-2 border rounded" />
                     </div>
                     <button type="button" onClick={() => removeEducation(idx)} className="text-red-500 text-sm mt-2 flex items-center gap-1">
@@ -544,7 +609,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 </div>
                 {formData.foreignLanguages.map((lang, idx) => (
                   <div key={idx} className="bg-slate-50 p-3 rounded-lg mb-2 flex gap-2 items-end">
-                    <input type="text" placeholder="Ngôn ngữ" value={lang.language} onChange={(e) => updateLanguage(idx, 'language', e.target.value)} className="flex-1 text-sm p-2 border rounded" />
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs text-gray-400 mb-1">
+                        <span></span>
+                        <span>{lang.language.length}/255</span>
+                      </div>
+                      <input type="text" maxLength="255" placeholder="Ngôn ngữ" value={lang.language} onChange={(e) => updateLanguage(idx, 'language', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                    </div>
                     <select value={lang.level} onChange={(e) => updateLanguage(idx, 'level', e.target.value)} className="text-sm p-2 border rounded">
                       <option>Sơ cấp</option>
                       <option>Trung cấp</option>
@@ -569,8 +640,20 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 {formData.certificates.map((cert, idx) => (
                   <div key={idx} className="bg-slate-50 p-3 rounded-lg mb-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                      <input type="text" placeholder="Tên chứng chỉ" value={cert.certName} onChange={(e) => updateCertificate(idx, 'certName', e.target.value)} className="text-sm p-2 border rounded" />
-                      <input type="text" placeholder="Tổ chức cấp" value={cert.organization} onChange={(e) => updateCertificate(idx, 'organization', e.target.value)} className="text-sm p-2 border rounded" />
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{cert.certName.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Tên chứng chỉ" value={cert.certName} onChange={(e) => updateCertificate(idx, 'certName', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{cert.organization.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Tổ chức cấp" value={cert.organization} onChange={(e) => updateCertificate(idx, 'organization', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
                       <input type="date" value={cert.issueDate} onChange={(e) => updateCertificate(idx, 'issueDate', e.target.value)} className="text-sm p-2 border rounded" />
                       <input type="url" placeholder="URL chứng chỉ" value={cert.certURL} onChange={(e) => updateCertificate(idx, 'certURL', e.target.value)} className="text-sm p-2 border rounded" />
                     </div>
@@ -592,7 +675,13 @@ const ApplyModal = ({ isOpen, onClose, posting, onSuccess }) => {
                 {formData.cvs.map((cv, idx) => (
                   <div key={idx} className="bg-slate-50 p-3 rounded-lg mb-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                      <input type="text" placeholder="Tên CV" value={cv.cvName} onChange={(e) => updateCV(idx, 'cvName', e.target.value)} className="text-sm p-2 border rounded" />
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span></span>
+                          <span>{cv.cvName.length}/255</span>
+                        </div>
+                        <input type="text" maxLength="255" placeholder="Tên CV" value={cv.cvName} onChange={(e) => updateCV(idx, 'cvName', e.target.value)} className="w-full text-sm p-2 border rounded" />
+                      </div>
                       <input type="url" placeholder="URL CV" value={cv.cvURL} onChange={(e) => updateCV(idx, 'cvURL', e.target.value)} className="text-sm p-2 border rounded" />
                     </div>
                     <button type="button" onClick={() => removeCV(idx)} className="text-red-500 text-sm flex items-center gap-1">

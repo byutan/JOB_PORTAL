@@ -3,12 +3,17 @@ const pool = require('../config/db');
 // 1. Lấy danh sách tin (GET)
 const getAllPostings = async (req, res) => {
     try {
-        const sql = `SELECT p.*, e.repCompanyName AS repCompanyName, co.companyName AS companyName
-                     FROM Posting p
-                     LEFT JOIN Employer e ON p.EmployerID = e.EmployerID
-                     LEFT JOIN Company co ON e.companyID = co.companyID
-                     ORDER BY p.postID DESC`;
-        const [rows] = await pool.execute(sql);
+                const sql = `SELECT p.*, e.repCompanyName AS repCompanyName, co.companyName AS companyName,
+                                                         GROUP_CONCAT(DISTINCT s.skillName SEPARATOR ',') AS requiredSkills
+                                         FROM Posting p
+                                         LEFT JOIN Employer e ON p.EmployerID = e.EmployerID
+                                         LEFT JOIN Company co ON e.companyID = co.companyID
+                                         LEFT JOIN \
+                                             \`Require\` r ON p.postID = r.postID
+                                         LEFT JOIN Skill s ON r.skillID = s.skillID
+                                         GROUP BY p.postID
+                                         ORDER BY p.postID DESC`;
+                const [rows] = await pool.execute(sql);
         res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -19,11 +24,15 @@ const getAllPostings = async (req, res) => {
 const getPostingById = async (req, res) => {
     const { id } = req.params;
     try {
-        const sql = `SELECT p.*, e.repCompanyName AS repCompanyName, co.companyName AS companyName
-                     FROM Posting p
-                     LEFT JOIN Employer e ON p.EmployerID = e.EmployerID
-                     LEFT JOIN Company co ON e.companyID = co.companyID
-                     WHERE p.postID = ?`;
+        const sql = `SELECT p.*, e.repCompanyName AS repCompanyName, co.companyName AS companyName,
+                     GROUP_CONCAT(DISTINCT s.skillName SEPARATOR ',') AS requiredSkills
+                 FROM Posting p
+                 LEFT JOIN Employer e ON p.EmployerID = e.EmployerID
+                 LEFT JOIN Company co ON e.companyID = co.companyID
+                 LEFT JOIN \`Require\` r ON p.postID = r.postID
+                 LEFT JOIN Skill s ON r.skillID = s.skillID
+                 WHERE p.postID = ?
+                 GROUP BY p.postID`;
         const [rows] = await pool.execute(sql, [id]);
         if (!rows || rows.length === 0) {
             return res.status(404).json({ message: `Posting ID ${id} not found` });
