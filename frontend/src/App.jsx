@@ -13,6 +13,7 @@ import CandidateProfileModal from './components/CandidateProfileModal';
 import CandidatesListModal from './components/CandidatesListModal';
 import CandidateAvailablePostingsModal from './components/CandidateAvailablePostingsModal';
 import CandidateStrengthModal from './components/CandidateStrengthModal';
+import CandidateProfileEditModal from './components/CandidateProfileEditModal';
 
 
 // --- Component Thông báo (Notification) ---
@@ -58,6 +59,7 @@ const App = () => {
   const [candidateAvailablePostingsOpen, setCandidateAvailablePostingsOpen] = useState(false);
   const [candidateID, setCandidateID] = useState(''); // ID của ứng viên
   const [candidateInputError, setCandidateInputError] = useState(''); // Lỗi khi nhập ID
+  const [profileEditOpen, setProfileEditOpen] = useState(false); // Trạng thái modal chỉnh sửa profile
 
   // --- 1. LOAD DATA (READ) ---
   useEffect(() => {
@@ -228,6 +230,12 @@ const App = () => {
             >
             <span className="ml-2">Đánh Giá Hồ Sơ</span>
             </button>
+            <button
+              onClick={() => setProfileEditOpen(true)}
+              className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-purple-200"
+            >
+            <span className="ml-2">Chỉnh Sửa Profile</span>
+            </button>
             <button 
               onClick={openCreateModal} 
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-blue-200"
@@ -343,6 +351,13 @@ const App = () => {
         isOpen={strengthOpen}
         onClose={() => setStrengthOpen(false)}
         onViewProfile={handleViewCandidateProfile}
+      />
+
+      {/* Candidate Profile Edit Modal */}
+      <CandidateProfileEditModal
+        isOpen={profileEditOpen}
+        onClose={() => setProfileEditOpen(false)}
+        onSuccess={() => loadData()}
       />
 
 

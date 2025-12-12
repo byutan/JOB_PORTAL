@@ -20,12 +20,44 @@ export const candidateService = {
     }
   },
   updateProfile: async (id, data) => {
-  const res = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+    try {
+      const res = await fetch(`${API_BASE}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
 
-  return res.json();
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.message || `HTTP ${res.status}: ${res.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      return res.json();
+    } catch (error) {
+      console.error(`Error updating candidate profile:`, error);
+      throw new Error(`Cập nhật profile thất bại: ${error.message}`);
+    }
+  }
+  ,
+  updateFullProfile: async (id, data) => {
+    try {
+      const res = await fetch(`${API_BASE}/${id}/full`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.message || `HTTP ${res.status}: ${res.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      return res.json();
+    } catch (error) {
+      console.error(`Error updating full candidate profile:`, error);
+      throw new Error(`Cập nhật profile thất bại: ${error.message}`);
+    }
   }
 };

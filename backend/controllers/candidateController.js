@@ -1,5 +1,24 @@
 const pool = require('../config/db');
 
+// Helper: normalize date-like inputs to MySQL DATE 'YYYY-MM-DD' or null
+function formatDateForSQL(input) {
+  if (!input) return null;
+  try {
+    // For string inputs, try extracting YYYY-MM-DD directly first
+    if (typeof input === 'string') {
+      // Match ISO format or YYYY-MM-DD format
+      const m = input.match(/(\d{4}-\d{2}-\d{2})/);
+      if (m) return m[1]; // Return the date part only
+    }
+    // Parse as Date object and convert
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  } catch (e) {
+    return null;
+  }
+}
+
 // GET /api/candidates/:id?employerId=123
 // Returns candidate profile (basic info + CVs, experiences, education, skills, certificates)
 const getCandidateProfile = async (req, res) => {
@@ -217,7 +236,9 @@ const applyAsNewCandidate = async (req, res) => {
         if (exp.jobTitle && exp.companyName) {
           const expSql = `INSERT INTO Experience (CandidateID, expID, jobTitle, CompanyName, startDate, endDate, expDesc, Candidate_ID) 
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-          await pool.execute(expSql, [newUserID, i + 1, exp.jobTitle, exp.companyName, exp.startDate || null, exp.endDate || null, exp.description || '', newUserID]);
+          const start = formatDateForSQL(exp.startDate);
+          const end = formatDateForSQL(exp.endDate);
+          await pool.execute(expSql, [newUserID, i + 1, exp.jobTitle, exp.companyName, start, end, exp.description || '', newUserID]);
         }
       }
     }
@@ -229,7 +250,9 @@ const applyAsNewCandidate = async (req, res) => {
         if (edu.schoolName) {
           const eduSql = `INSERT INTO Education (CandidateID, eduID, schoolName, major, degree, startDate, endDate, Candidate_ID) 
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-          await pool.execute(eduSql, [newUserID, i + 1, edu.schoolName, edu.major || '', edu.degree || '', edu.startDate || null, edu.endDate || null, newUserID]);
+          const s = formatDateForSQL(edu.startDate);
+          const e = formatDateForSQL(edu.endDate);
+          await pool.execute(eduSql, [newUserID, i + 1, edu.schoolName, edu.major || '', edu.degree || '', s, e, newUserID]);
         }
       }
     }
@@ -253,7 +276,8 @@ const applyAsNewCandidate = async (req, res) => {
         if (cert.certName) {
           const certSql = `INSERT INTO Certificate (CandidateID, certID, certName, organization, issueDate, certURL, Candidate_ID) 
                           VALUES (?, ?, ?, ?, ?, ?, ?)`;
-          await pool.execute(certSql, [newUserID, i + 1, cert.certName, cert.organization || '', cert.issueDate || null, cert.certURL || '', newUserID]);
+          const issue = formatDateForSQL(cert.issueDate);
+          await pool.execute(certSql, [newUserID, i + 1, cert.certName, cert.organization || '', issue, cert.certURL || '', newUserID]);
         }
       }
     }
@@ -336,5 +360,97 @@ module.exports = {
   createUser,
   createCandidate,
   applyAsNewCandidate,
-  updateCandidate
+  updateCandidate,
+  updateCandidateFullProfile: async (req, res) => {
+    const { id } = req.params;
+    const {
+      fullName, emailAddr, phoneNumber, address,
+      currentTitle, selfIntro, totalYearOfExp,
+      experiences = [], education = [], certificates = []
+    } = req.body;
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Verify candidate exists
+      const [candRows] = await conn.execute('SELECT * FROM Candidate WHERE CandidateID = ?', [id]);
+      if (!candRows || candRows.length === 0) {
+        await conn.rollback();
+        conn.release();
+        return res.status(404).json({ message: 'Ứng viên không tồn tại' });
+      }
+
+      // Update User info (CandidateID maps to userID)
+      await conn.execute(
+        'UPDATE `User` SET fullName = ?, emailAddr = ?, phoneNumber = ?, address = ? WHERE userID = ?',
+        [fullName || null, emailAddr || null, phoneNumber || null, address || null, id]
+      );
+
+      // Update Candidate basic fields
+      await conn.execute(
+        `UPDATE Candidate SET currentTitle = ?, selfIntro = ?, totalYearOfExp = ? WHERE CandidateID = ?`,
+        [currentTitle || '', selfIntro || '', totalYearOfExp || 0, id]
+      );
+
+      // Replace Experiences
+      await conn.execute('DELETE FROM Experience WHERE CandidateID = ?', [id]);
+      if (Array.isArray(experiences) && experiences.length > 0) {
+        for (let i = 0; i < experiences.length; i++) {
+          const exp = experiences[i];
+          const expSql = `INSERT INTO Experience (CandidateID, expID, jobTitle, CompanyName, startDate, endDate, expDesc, Candidate_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+          const s = formatDateForSQL(exp.startDate);
+          const e = formatDateForSQL(exp.endDate);
+          await conn.execute(expSql, [id, i + 1, exp.jobTitle || '', exp.CompanyName || '', s, e, exp.expDesc || '', id]);
+        }
+      }
+
+      // Replace Education
+      await conn.execute('DELETE FROM Education WHERE CandidateID = ?', [id]);
+      if (Array.isArray(education) && education.length > 0) {
+        for (let i = 0; i < education.length; i++) {
+          const edu = education[i];
+          const eduSql = `INSERT INTO Education (CandidateID, eduID, schoolName, major, degree, startDate, endDate, Candidate_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+          const s = formatDateForSQL(edu.startDate);
+          const e = formatDateForSQL(edu.endDate);
+          await conn.execute(eduSql, [id, i + 1, edu.schoolName || '', edu.major || '', edu.degree || '', s, e, id]);
+        }
+      }
+
+      // Replace Certificates
+      await conn.execute('DELETE FROM Certificate WHERE CandidateID = ?', [id]);
+      if (Array.isArray(certificates) && certificates.length > 0) {
+        for (let i = 0; i < certificates.length; i++) {
+          const cert = certificates[i];
+          const certSql = `INSERT INTO Certificate (CandidateID, certID, certName, organization, issueDate, certURL, Candidate_ID) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+          const issue = formatDateForSQL(cert.issueDate);
+          await conn.execute(certSql, [id, i + 1, cert.certName || '', cert.organization || '', issue, cert.certURL || '', id]);
+        }
+      }
+
+      await conn.commit();
+
+      // Return updated profile fragments
+      const [cvRows] = await conn.execute('SELECT * FROM CV WHERE CandidateID = ?', [id]);
+      const [expRows] = await conn.execute('SELECT * FROM Experience WHERE CandidateID = ? ORDER BY endDate DESC', [id]);
+      const [eduRows] = await conn.execute('SELECT * FROM Education WHERE CandidateID = ? ORDER BY endDate DESC', [id]);
+      const [certRows] = await conn.execute('SELECT * FROM Certificate WHERE CandidateID = ?', [id]);
+
+      conn.release();
+
+      res.status(200).json({
+        success: true,
+        message: 'Cập nhật hồ sơ đầy đủ thành công',
+        experiences: expRows,
+        education: eduRows,
+        certificates: certRows,
+        cvs: cvRows
+      });
+    } catch (error) {
+      await conn.rollback();
+      conn.release();
+      console.error('Lỗi cập nhật full profile:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 };

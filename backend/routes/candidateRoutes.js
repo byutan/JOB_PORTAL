@@ -14,7 +14,10 @@ router.post('/apply-new', candidateController.applyAsNewCandidate);
 // GET candidate profile (optionally pass ?employerId= to filter CV access)
 router.get('/:id', candidateController.getCandidateProfile);
 
-router.put('/:id', updateCandidate);
+// PUT: Update candidate profile
+router.put('/:id', candidateController.updateCandidate);
+// PUT: Update full profile including experiences/education/certificates
+router.put('/:id/full', candidateController.updateCandidateFullProfile);
 
 
 module.exports = router;
