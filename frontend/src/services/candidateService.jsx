@@ -6,8 +6,26 @@ export const candidateService = {
     const url = new URL(`${API_BASE}/${candidateId}`);
     if (employerId) url.searchParams.set('employerId', employerId);
 
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error('Không thể tải profile ứng viên');
-    return res.json();
+    try {
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.message || `HTTP ${res.status}: ${res.statusText}`;
+        throw new Error(errorMsg);
+      }
+      return res.json();
+    } catch (error) {
+      console.error(`Error loading candidate profile for ID ${candidateId}:`, error);
+      throw new Error(`Không thể tải profile ứng viên: ${error.message}`);
+    }
+  },
+  updateProfile: async (id, data) => {
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
   }
 };

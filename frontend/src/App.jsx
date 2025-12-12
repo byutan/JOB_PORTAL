@@ -8,7 +8,12 @@ import { candidateService } from './services/candidateService';
 import PostingFormModal from './components/PostingFormModal';
 import PostingTable from './components/PostingTable';
 import AppliesModal from './components/AppliesModal';
+import ApplyModal from './components/ApplyModal';
 import CandidateProfileModal from './components/CandidateProfileModal';
+import CandidatesListModal from './components/CandidatesListModal';
+import CandidateAvailablePostingsModal from './components/CandidateAvailablePostingsModal';
+import CandidateStrengthModal from './components/CandidateStrengthModal';
+
 
 // --- Component Thông báo (Notification) ---
 // (Dùng nội bộ trong App để hiển thị kết quả thao tác)
@@ -39,11 +44,20 @@ const App = () => {
   const [appliesModalOpen, setAppliesModalOpen] = useState(false);
   const [appliesData, setAppliesData] = useState([]);
   const [currentPostId, setCurrentPostId] = useState(null);
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [selectedPostingForApply, setSelectedPostingForApply] = useState(null);
   const [candidateProfileOpen, setCandidateProfileOpen] = useState(false);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [notify, setNotify] = useState({ type: '', message: '' }); // Thông báo Toast
   const [searchTerm, setSearchTerm] = useState(''); // Từ khóa tìm kiếm
+  const [strengthOpen, setStrengthOpen] = useState(false);
+  // New states for new components
+  const [candidatesListOpen, setCandidatesListOpen] = useState(false);
+  const [selectedPostingForCandidates, setSelectedPostingForCandidates] = useState(null);
+  const [candidateAvailablePostingsOpen, setCandidateAvailablePostingsOpen] = useState(false);
+  const [candidateID, setCandidateID] = useState(''); // ID của ứng viên
+  const [candidateInputError, setCandidateInputError] = useState(''); // Lỗi khi nhập ID
 
   // --- 1. LOAD DATA (READ) ---
   useEffect(() => {
@@ -137,6 +151,42 @@ const App = () => {
     }
   };
 
+  // --- OPEN APPLY MODAL ---
+  const handleOpenApplyModal = (posting) => {
+    setSelectedPostingForApply(posting);
+    setApplyModalOpen(true);
+  };
+
+  // --- AFTER APPLY SUCCESS, RELOAD DATA ---
+  const handleApplySuccess = () => {
+    loadData();
+    // Show success message
+    showNotify('success', 'Ứng tuyển thành công!');
+  };
+
+  // --- OPEN CANDIDATES LIST MODAL ---
+  const handleOpenCandidatesListModal = (posting) => {
+    setSelectedPostingForCandidates(posting);
+    setCandidatesListOpen(true);
+  };
+
+  // --- OPEN CANDIDATE AVAILABLE POSTINGS MODAL ---
+  const handleOpenCandidateAvailablePostings = () => {
+    setCandidateInputError('');
+    
+    if (!candidateID || candidateID.trim() === '') {
+      setCandidateInputError('Vui lòng nhập ID ứng viên');
+      return;
+    }
+    
+    if (isNaN(candidateID) || parseInt(candidateID) <= 0) {
+      setCandidateInputError('ID ứng viên phải là một số dương');
+      return;
+    }
+    
+    setCandidateAvailablePostingsOpen(true);
+  };
+
   // --- CÁC HÀM ĐIỀU KHIỂN UI ---
   const openCreateModal = () => {
     setEditingItem(null); // Đặt về null để Form biết là đang Tạo mới
@@ -171,16 +221,63 @@ const App = () => {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Hệ Thống Tuyển Dụng</h1>
             <p className="text-slate-500 mt-1">Quản lý các tin đăng và trạng thái ứng tuyển</p>
           </div>
-          <button 
-            onClick={openCreateModal} 
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-blue-200"
-          >
-            <Plus size={20} className="mr-2" />
-            Đăng Tin Mới
-          </button>
+          <div className="flex gap-3 w-fit">
+            <button
+              onClick={() => setStrengthOpen(true)}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-purple-200"
+            >
+            <span className="ml-2">Đánh Giá Hồ Sơ</span>
+            </button>
+            <button 
+              onClick={openCreateModal} 
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-blue-200"
+            >
+              <Plus size={20} className="mr-2" />
+              Đăng Tin Mới
+            </button>
+          </div>
         </div>
 
-        {/* Thanh tìm kiếm */}
+        {/* Thanh nhập ID ứng viên */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl shadow-sm border border-emerald-200 mb-6">
+          <label className="block text-sm font-semibold text-slate-700 mb-2">Nhập ID Ứng Viên Để Tìm Việc Làm</label>
+          <div className="flex gap-3 items-start">
+            <div className="flex-1">
+              <input 
+                type="number" 
+                placeholder="Nhập ID ứng viên (vd: 1, 2, 3...)" 
+                className={`w-full px-4 py-2.5 rounded-lg border-2 transition-all outline-none ${
+                  candidateInputError 
+                    ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-2 focus:ring-red-200'
+                    : 'border-emerald-300 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200'
+                }`}
+                value={candidateID}
+                onChange={(e) => {
+                  setCandidateID(e.target.value);
+                  setCandidateInputError('');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleOpenCandidateAvailablePostings();
+                  }
+                }}
+              />
+              {candidateInputError && (
+                <p className="text-red-600 text-sm mt-2 font-medium"> {candidateInputError}</p>
+              )}
+            </div>
+            <button 
+              onClick={handleOpenCandidateAvailablePostings}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center shadow-lg shadow-emerald-200 mt-0.5 whitespace-nowrap"
+            >
+              <Search size={18} className="mr-2" />
+              Tìm Việc
+            </button>
+          </div>
+          <p className="text-xs text-slate-600 mt-2"> Hãy nhập ID ứng viên của bạn từ database để bắt đầu tìm kiếm công việc</p>
+        </div>
+
+        {/* Thanh tìm kiếm cho công việc (chỉ cho nhà tuyển dụng) */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -202,6 +299,8 @@ const App = () => {
             onEdit={openEditModal} 
             onDelete={handleDelete} 
             onViewApplies={handleViewApplies}
+            onApply={handleOpenApplyModal}
+            onViewCandidates={handleOpenCandidatesListModal}
           />
         </div>
         
@@ -222,8 +321,31 @@ const App = () => {
       {/* Applies Modal */}
       <AppliesModal isOpen={appliesModalOpen} onClose={() => setAppliesModalOpen(false)} applies={appliesData} onViewCandidate={handleViewCandidateProfile} postId={currentPostId} />
 
+      {/* Apply Modal (Candidate applying for a job) */}
+      <ApplyModal isOpen={applyModalOpen} onClose={() => setApplyModalOpen(false)} posting={selectedPostingForApply} onSuccess={handleApplySuccess} />
+
       {/* Candidate Profile Modal */}
       <CandidateProfileModal isOpen={candidateProfileOpen} onClose={() => setCandidateProfileOpen(false)} profile={candidateProfile} isLoading={candidateLoading} />
+
+      {/* Candidates List Modal (includes statistics) */}
+      <CandidatesListModal isOpen={candidatesListOpen} onClose={() => setCandidatesListOpen(false)} posting={selectedPostingForCandidates} onViewProfile={handleViewCandidateProfile} />
+
+      {/* Candidate Available Postings Modal */}
+      <CandidateAvailablePostingsModal 
+        isOpen={candidateAvailablePostingsOpen} 
+        onClose={() => setCandidateAvailablePostingsOpen(false)} 
+        candidateID={parseInt(candidateID)}
+        onApplySuccess={handleApplySuccess}
+      />
+
+      {/* Candidate Strength Modal */}
+      <CandidateStrengthModal 
+        isOpen={strengthOpen}
+        onClose={() => setStrengthOpen(false)}
+        onViewProfile={handleViewCandidateProfile}
+      />
+
+
 
       {/* Style Animation cho Notification */}
       <style>{`

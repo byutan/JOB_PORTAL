@@ -69,5 +69,43 @@ export const postingService = {
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Không thể tải danh sách ứng tuyển');
     return res.json();
+  },
+
+  // Ứng viên ứng tuyển cho tin (POST)
+  applyToPosting: async (postId, candidateID) => {
+    const res = await fetch(`${API_BASE_URL}/${postId}/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidateID: parseInt(candidateID) }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Lỗi khi ứng tuyển');
+    return result;
+  },
+
+  // Lấy danh sách ứng viên cho posting (từ stored procedure)
+  getCandidatesByPosting: async (postId) => {
+    const res = await fetch(`${API_BASE_URL}/${postId}/candidates`);
+    if (!res.ok) throw new Error('Không thể tải danh sách ứng viên');
+    return res.json();
+  },
+
+  // Lấy thống kê kỹ năng cho posting (từ stored procedure)
+  getSkillAnalysis: async (postId) => {
+    const res = await fetch(`${API_BASE_URL}/${postId}/skill-analysis`);
+    if (!res.ok) throw new Error('Không thể tải phân tích kỹ năng');
+    return res.json();
+  },
+
+  // Apply as new candidate (create user + candidate + apply in one step)
+  applyAsNewCandidate: async (data) => {
+    const res = await fetch('http://localhost:3000/api/candidates/apply-new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Lỗi khi ứng tuyển');
+    return result;
   }
 };
